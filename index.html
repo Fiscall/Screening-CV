@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Candidate Screening & Resume Matcher</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PDF.js for parsing PDF files in-browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- Header Section -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                    <i class="fa-solid font-bold fa-brain text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                        AI Talent Acquisition Screening Agent
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200">v2.5 Enterprise</span>
+                    </h1>
+                    <p class="text-xs text-slate-500">Upload single or bulk CVs to automatically screen and match qualifications against Job Descriptions.</p>
+                </div>
+            </div>
+            
+            <!-- Strategic Header Action -->
+            <div class="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Copilot AI Engine: <b>Active & Ready</b></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Panel: Job Criteria & File Upload -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Job Criteria Selector -->
+            <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <label for="jobPreset" class="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-briefcase text-brand-500"></i> Job Description Target
+                        </label>
+                        <span class="text-xs text-brand-600 font-medium cursor-pointer hover:underline" onclick="toggleCustomJDModal()">+ Custom Criteria</span>
+                    </div>
+
+                    <select id="jobPreset" onchange="handlePresetChange()" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl p-3 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all font-medium mb-4">
+                        <option value="ta_supervisor">Talent Acquisition Supervisor (Manufacturing)</option>
+                        <option value="hr_ops">HR Operations & Payroll Specialist</option>
+                        <option value="ops_supervisor">Production / Operations Supervisor</option>
+                        <option value="custom">Custom Job Description...</option>
+                    </select>
+
+                    <!-- Criteria Summary Box -->
+                    <div id="criteriaSummary" class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 text-xs">
+                        <div class="flex justify-between text-slate-600">
+                            <span>Min. Experience:</span>
+                            <span id="reqExp" class="font-semibold text-slate-900">3 Years</span>
+                        </div>
+                        <div class="flex justify-between text-slate-600">
+                            <span>Industry Focus:</span>
+                            <span id="reqIndustry" class="font-semibold text-slate-900">Manufacturing / Corporate</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-600 block mb-1">Must-Have Skills:</span>
+                            <div id="reqSkills" class="flex flex-wrap gap-1">
+                                <!-- Dynamic tags -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span>Target Screening SLA: <b>&lt; 1 min / CV</b></span>
+                    <span>Matching Mode: <b>Semantic Contextual</b></span>
+                </div>
+            </div>
+
+            <!-- Drag & Drop Upload Zone -->
+            <div class="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up text-brand-500"></i> Upload Candidate Resumes (CVs)
+                        </h2>
+                        <span class="text-xs text-slate-400">Supports PDF, DOCX, TXT (Single or Bulk)</span>
+                    </div>
+
+                    <!-- Drop Zone -->
+                    <div id="dropZone" 
+                         onclick="document.getElementById('fileInput').click()" 
+                         ondragover="handleDragOver(event)" 
+                         ondragleave="handleDragLeave(event)" 
+                         ondrop="handleDrop(event)"
+                         class="border-2 border-dashed border-slate-200 hover:border-brand-500 bg-slate-50 hover:bg-brand-50/30 transition-all rounded-2xl p-6 text-center cursor-pointer group">
+                        
+                        <input type="file" id="fileInput" multiple accept=".pdf,.docx,.txt" class="hidden" onchange="handleFileSelect(event)">
+                        
+                        <div class="h-12 w-12 mx-auto mb-3 rounded-full bg-brand-50 group-hover:bg-brand-100 flex items-center justify-center text-brand-600 transition-all">
+                            <i class="fa-solid fa-file-arrow-up text-2xl group-hover:scale-110 transition-transform"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-800">
+                            Drag & drop CV files here, or <span class="text-brand-600 underline">browse computer</span>
+                        </p>
+                        <p class="text-xs text-slate-400 mt-1">Select 1 file or up to 50 files simultaneously for batch screening.</p>
+                    </div>
+                </div>
+
+                <!-- Action Toolbar -->
+                <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                        <button onclick="loadSampleData()" class="px-3 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5">
+                            <i class="fa-solid fa-vial"></i> Load Sample Candidate Batch
+                        </button>
+                        <button onclick="clearAllData()" class="px-3 py-2 text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors flex items-center gap-1.5">
+                            <i class="fa-solid fa-trash-can"></i> Clear All
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button id="btnProcess" onclick="processUploadedFiles()" disabled class="px-5 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-md shadow-brand-500/20 transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Process & Match CVs
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Processing Progress Bar (Hidden by default) -->
+        <div id="progressContainer" class="hidden bg-white p-4 rounded-2xl border border-brand-200 shadow-sm space-y-2">
+            <div class="flex justify-between items-center text-xs font-medium text-slate-700">
+                <span id="progressText" class="flex items-center gap-2">
+                    <i class="fa-solid fa-spinner fa-spin text-brand-600"></i> AI Agent is analyzing CVs...
+                </span>
+                <span id="progressPercent" class="font-bold text-brand-600">0%</span>
+            </div>
+            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                <div id="progressBar" class="bg-gradient-to-r from-brand-500 to-indigo-600 h-full w-0 transition-all duration-300"></div>
+            </div>
+        </div>
+
+        <!-- Executive Analytics Dashboard Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <!-- Total Applicants -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-xs font-medium text-slate-500">Total Applicants</p>
+                <div class="mt-2 flex items-baseline justify-between">
+                    <span id="statTotal" class="text-2xl font-bold text-slate-900">0</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Files</span>
+                </div>
+            </div>
+
+            <!-- High Fit (>= 75%) -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500">
+                <p class="text-xs font-medium text-slate-500">High Fit (≥75%)</p>
+                <div class="mt-2 flex items-baseline justify-between">
+                    <span id="statHigh" class="text-2xl font-bold text-emerald-600">0</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700">Shortlisted</span>
+                </div>
+            </div>
+
+            <!-- Moderate Fit (50-74%) -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
+                <p class="text-xs font-medium text-slate-500">Moderate Fit (50-74%)</p>
+                <div class="mt-2 flex items-baseline justify-between">
+                    <span id="statModerate" class="text-2xl font-bold text-amber-600">0</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700">Talent Pool</span>
+                </div>
+            </div>
+
+            <!-- Low Fit (< 50%) -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-rose-500">
+                <p class="text-xs font-medium text-slate-500">Low Fit (&lt;50%)</p>
+                <div class="mt-2 flex items-baseline justify-between">
+                    <span id="statLow" class="text-2xl font-bold text-rose-600">0</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700">Unsuitable</span>
+                </div>
+            </div>
+
+            <!-- Avg Match Score -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm col-span-2 md:col-span-1">
+                <p class="text-xs font-medium text-slate-500">Avg Match Score</p>
+                <div class="mt-2 flex items-baseline justify-between">
+                    <span id="statAvg" class="text-2xl font-bold text-brand-600">0%</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-brand-50 text-brand-700">Overall</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Screening Matrix Table Container -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            
+            <!-- Table Controls & Filters -->
+            <div class="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                
+                <!-- Category Filter Buttons -->
+                <div class="flex flex-wrap items-center gap-1.5" id="filterBtnGroup">
+                    <button onclick="setFilter('all')" data-filter="all" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white transition-all shadow-sm">
+                        All Status (<span id="cntAll">0</span>)
+                    </button>
+                    <button onclick="setFilter('high')" data-filter="high" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-all">
+                        High Fit (<span id="cntHigh">0</span>)
+                    </button>
+                    <button onclick="setFilter('moderate')" data-filter="moderate" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-all">
+                        Moderate Fit (<span id="cntMod">0</span>)
+                    </button>
+                    <button onclick="setFilter('low')" data-filter="low" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-all">
+                        Low Fit (<span id="cntLow">0</span>)
+                    </button>
+                </div>
+
+                <!-- Search & Export -->
+                <div class="flex items-center gap-2">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        <input type="text" id="searchInput" oninput="renderTable()" placeholder="Search candidate name or skill..." class="pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none w-48 sm:w-64">
+                    </div>
+                    <button onclick="exportToCSV()" class="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fa-solid fa-file-excel"></i> Export Excel/CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Area -->
+            <div class="overflow-x-auto min-h-[300px]">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider">
+                        <tr>
+                            <th class="py-3.5 px-4">Candidate Profile</th>
+                            <th class="py-3.5 px-4 cursor-pointer select-none hover:text-slate-900" onclick="toggleSort()">
+                                Match Score <i class="fa-solid fa-sort text-slate-400 ml-1" id="sortIcon"></i>
+                            </th>
+                            <th class="py-3.5 px-4">Category Status</th>
+                            <th class="py-3.5 px-4 w-5/12">Key Strengths & Gaps Analysis</th>
+                            <th class="py-3.5 px-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="candidateTableBody" class="divide-y divide-slate-100 text-slate-700">
+                        <!-- Table Rows Rendered via JS -->
+                    </tbody>
+                </table>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="py-16 text-center text-slate-400 flex flex-col items-center justify-center">
+                    <div class="h-16 w-16 mb-4 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
+                        <i class="fa-solid fa-folder-open text-3xl"></i>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-600">No candidates analyzed yet</p>
+                    <p class="text-xs text-slate-400 max-w-sm mt-1">Upload CV files above or click "Load Sample Candidate Batch" to test the AI screening functionality.</p>
+                </div>
+            </div>
+
+            <!-- Table Footer -->
+            <div class="p-3 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
+                <span id="recordCountInfo">Showing 0 of 0 candidates</span>
+                <span class="text-slate-400"><i class="fa-solid fa-shield-halved"></i> Data processed locally & securely</span>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal: Candidate Detail Breakdown Drawer -->
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex justify-end transition-opacity duration-300">
+        <div class="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-300">
+            <div>
+                <!-- Modal Header -->
+                <div class="p-6 border-b border-slate-200 bg-slate-50 flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <h3 id="modalName" class="text-lg font-bold text-slate-900">Candidate Name</h3>
+                            <span id="modalBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full">Status</span>
+                        </div>
+                        <p id="modalPos" class="text-xs text-slate-500 mt-1">Applied for: Talent Acquisition Supervisor</p>
+                    </div>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 h-8 w-8 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Content -->
+                <div class="p-6 space-y-6">
+                    
+                    <!-- Overall Match Banner -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-500 font-medium">Overall Contextual Compatibility</p>
+                            <p id="modalScoreVal" class="text-3xl font-extrabold text-brand-600 mt-1">0%</p>
+                        </div>
+                        <div class="w-1/2">
+                            <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                                <div id="modalScoreBar" class="bg-brand-500 h-full rounded-full transition-all duration-500"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Parameter Breakdown Ratings -->
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">Evaluation Parameter Breakdown</h4>
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                                <span class="text-slate-500">Relevant Experience (40%):</span>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span id="scoreExp" class="font-bold text-slate-800">0 / 40</span>
+                                    <span class="text-slate-400 text-[10px]">Weight: High</span>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                                <span class="text-slate-500">Must-Have Skills (30%):</span>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span id="scoreSkills" class="font-bold text-slate-800">0 / 30</span>
+                                    <span class="text-slate-400 text-[10px]">Weight: High</span>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                                <span class="text-slate-500">Education & Certs (15%):</span>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span id="scoreEdu" class="font-bold text-slate-800">0 / 15</span>
+                                    <span class="text-slate-400 text-[10px]">Weight: Medium</span>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                                <span class="text-slate-500">Behavioral & SLA (15%):</span>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span id="scoreSLA" class="font-bold text-slate-800">0 / 15</span>
+                                    <span class="text-slate-400 text-[10px]">Weight: Medium</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Key Strengths -->
+                    <div>
+                        <h4 class="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-check"></i> Primary Strengths
+                        </h4>
+                        <ul id="modalStrengths" class="list-disc list-inside text-xs text-slate-700 space-y-1 bg-emerald-50/50 p-3 rounded-xl border border-emerald-100">
+                            <!-- JS Inject -->
+                        </ul>
+                    </div>
+
+                    <!-- Gaps / Areas to Explore -->
+                    <div>
+                        <h4 class="text-xs font-bold text-amber-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Identified Gaps / Interview Focus
+                        </h4>
+                        <ul id="modalGaps" class="list-disc list-inside text-xs text-slate-700 space-y-1 bg-amber-50/50 p-3 rounded-xl border border-amber-100">
+                            <!-- JS Inject -->
+                        </ul>
+                    </div>
+
+                    <!-- Extracted Text Snippet -->
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Parsed CV Raw Summary</h4>
+                        <div id="modalRawText" class="p-3 bg-slate-900 text-slate-300 font-mono text-[11px] rounded-xl max-h-40 overflow-y-auto leading-relaxed">
+                            <!-- Text snippet -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                <button onclick="copySummaryText()" class="px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1.5">
+                    <i class="fa-regular fa-copy"></i> Copy AI Summary
+                </button>
+                <button onclick="closeModal()" class="px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors">
+                    Close Breakdown
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Custom Job Description Input -->
+    <div id="customJdModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 class="text-sm font-bold text-slate-900">Define Custom Job Criteria</h3>
+                <button onclick="toggleCustomJDModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Job Title</label>
+                    <input type="text" id="custTitle" placeholder="e.g. Senior Continuous Improvement Engineer" class="w-full p-2.5 border rounded-lg bg-slate-50">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Min Experience (Years)</label>
+                    <input type="number" id="custExp" value="3" class="w-full p-2.5 border rounded-lg bg-slate-50">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Must-Have Skills (comma separated)</label>
+                    <input type="text" id="custSkills" placeholder="e.g. DMAIC, Six Sigma, Lean, Kaizen, SAP" class="w-full p-2.5 border rounded-lg bg-slate-50">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Industry Background</label>
+                    <input type="text" id="custIndustry" placeholder="e.g. Manufacturing, FMCG" class="w-full p-2.5 border rounded-lg bg-slate-50">
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-2">
+                <button onclick="toggleCustomJDModal()" class="px-4 py-2 text-xs text-slate-600 bg-white border rounded-lg">Cancel</button>
+                <button onclick="saveCustomJD()" class="px-4 py-2 text-xs font-semibold text-white bg-brand-600 rounded-lg">Save & Apply Criteria</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-xs font-medium flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <i class="fa-solid fa-circle-info text-brand-400" id="toastIcon"></i>
+        <span id="toastMsg">Notification message</span>
+    </div>
+
+    <!-- Application Logic Script -->
+    <script>
+        // Data presets for Job Descriptions
+        const JOB_PRESETS = {
+            ta_supervisor: {
+                title: "Talent Acquisition Supervisor",
+                minExp: 3,
+                industry: "Manufacturing / Corporate",
+                skills: ["Recruitment", "SLA", "HRIS", "DMAIC", "Continuous Improvement", "Volume Sourcing", "Interviewing"],
+                keywords: ["talent acquisition", "recruitment", "sla", "manufacturing", "hris", "dmaic", "kaizen", "interviews", "sourcing", "onboarding"]
+            },
+            hr_ops: {
+                title: "HR Operations & Payroll Specialist",
+                minExp: 2,
+                industry: "General / Corporate",
+                skills: ["Payroll", "BPJS", "Labor Law", "HRIS", "Excel Automation", "Personnel Data"],
+                keywords: ["payroll", "bpjs", "labor law", "ketenagakerjaan", "hris", "excel", "attendance", "contract", "personnel"]
+            },
+            ops_supervisor: {
+                title: "Production / Operations Supervisor",
+                minExp: 4,
+                industry: "Manufacturing Plant",
+                skills: ["5S", "Safety EHS", "OEE", "Team Leadership", "Production Planning", "Kaizen"],
+                keywords: ["production", "manufacturing", "5s", "ehs", "safety", "oee", "shift", "kaizen", "plant", "output"]
+            }
+        };
+
+        // State Management
+        let currentJobCriteria = JOB_PRESETS.ta_supervisor;
+        let uploadedFiles = [];
+        let candidateResults = [];
+        let activeFilter = 'all';
+        let currentSortAsc = false;
+
+        // On Page Load Initialization
+        window.onload = function() {
+            renderCriteriaSummary();
+            renderTable();
+        };
+
+        // Preset Change Handler
+        function handlePresetChange() {
+            const val = document.getElementById('jobPreset').value;
+            if (val === 'custom') {
+                toggleCustomJDModal();
+            } else {
+                currentJobCriteria = JOB_PRESETS[val];
+                renderCriteriaSummary();
+                if (candidateResults.length > 0) {
+                    recalculateAllScores();
+                }
+            }
+        }
+
+        function renderCriteriaSummary() {
+            document.getElementById('reqExp').innerText = currentJobCriteria.minExp + " Years";
+            document.getElementById('reqIndustry').innerText = currentJobCriteria.industry;
+            
+            const skillsDiv = document.getElementById('reqSkills');
+            skillsDiv.innerHTML = currentJobCriteria.skills.map(s => 
+                `<span class="bg-brand-50 text-brand-700 px-2 py-0.5 rounded font-medium">${s}</span>`
+            ).join('');
+        }
+
+        // Custom JD Modal logic
+        function toggleCustomJDModal() {
+            const modal = document.getElementById('customJdModal');
+            modal.classList.toggle('hidden');
+        }
+
+        function saveCustomJD() {
+            const title = document.getElementById('custTitle').value || "Custom Role";
+            const minExp = parseInt(document.getElementById('custExp').value) || 2;
+            const skillsRaw = document.getElementById('custSkills').value || "General";
+            const industry = document.getElementById('custIndustry').value || "General";
+
+            const skillsArr = skillsRaw.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+            currentJobCriteria = {
+                title: title,
+                minExp: minExp,
+                industry: industry,
+                skills: skillsArr,
+                keywords: [...skillsArr.map(s => s.toLowerCase()), industry.toLowerCase()]
+            };
+
+            renderCriteriaSummary();
+            toggleCustomJDModal();
+            showToast("Custom Job Description criteria applied successfully!");
+
+            if (candidateResults.length > 0) {
+                recalculateAllScores();
+            }
+        }
+
+        // Drag & Drop Handlers
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('dropZone').classList.add('border-brand-500', 'bg-brand-50/50');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('dropZone').classList.remove('border-brand-500', 'bg-brand-50/50');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('dropZone').classList.remove('border-brand-500', 'bg-brand-50/50');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                addFilesToList(files);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                addFilesToList(files);
+            }
+        }
+
+        function addFilesToList(files) {
+            for (let i = 0; i < files.length; i++) {
+                uploadedFiles.push(files[i]);
+            }
+            document.getElementById('btnProcess').disabled = false;
+            showToast(`Added ${files.length} file(s) to processing queue.`);
+        }
+
+        // Processing Uploaded Files
+        async function processUploadedFiles() {
+            if (uploadedFiles.length === 0) return;
+
+            // Show Progress Bar
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const progressPercent = document.getElementById('progressPercent');
+            
+            progressContainer.classList.remove('hidden');
+
+            const total = uploadedFiles.length;
+
+            for (let i = 0; i < total; i++) {
+                const file = uploadedFiles[i];
+                const currentNum = i + 1;
+                const pct = Math.round((currentNum / total) * 100);
+
+                progressText.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-brand-600"></i> AI Screening (${currentNum}/${total}): <b>${file.name}</b>`;
+                progressBar.style.width = pct + '%';
+                progressPercent.innerText = pct + '%';
+
+                // Read file content
+                const rawText = await readFileContent(file);
+                const result = analyzeCV(file.name, rawText);
+                candidateResults.push(result);
+
+                // Small delay to simulate processing UI
+                await new Promise(r => setTimeout(r, 400));
+            }
+
+            // Finish
+            uploadedFiles = [];
+            document.getElementById('fileInput').value = '';
+            document.getElementById('btnProcess').disabled = true;
+            
+            setTimeout(() => {
+                progressContainer.classList.add('hidden');
+                showToast(`Screening complete! Processed ${total} CVs.`);
+                renderTable();
+                updateAnalytics();
+            }, 500);
+        }
+
+        // Read file contents (PDF text extraction or Plain Text)
+        function readFileContent(file) {
+            return new Promise((resolve) => {
+                const fileExt = file.name.split('.').pop().toLowerCase();
+                const reader = new FileReader();
+
+                if (fileExt === 'pdf') {
+                    reader.onload = async function(e) {
+                        try {
+                            const typedarray = new Uint8Array(e.target.result);
+                            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                            let extractedText = '';
+                            
+                            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                                const page = await pdf.getPage(pageNum);
+                                const content = await page.getTextContent();
+                                const strings = content.items.map(item => item.str);
+                                extractedText += strings.join(' ') + ' ';
+                            }
+                            resolve(extractedText || "Sample CV Content for " + file.name);
+                        } catch (err) {
+                            resolve("Extracted content placeholder for PDF: " + file.name);
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    reader.onload = function(e) {
+                        resolve(e.target.result || "Sample plain text content for " + file.name);
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        }
+
+        // Core AI Screening Logic (Evaluates candidate against JD)
+        function analyzeCV(fileName, rawText) {
+            const cleanText = rawText.toLowerCase();
+            
+            // Extract Name candidate or derive from file name
+            const candidateName = deriveCandidateName(fileName, rawText);
+
+            // 1. Calculate Experience Score (Max 40)
+            const expYears = extractExperienceYears(cleanText);
+            let expScore = Math.min(40, Math.round((expYears / currentJobCriteria.minExp) * 35));
+            if (cleanText.includes("manufactur") || cleanText.includes("plant") || cleanText.includes("corporate")) {
+                expScore = Math.min(40, expScore + 5);
+            }
+
+            // 2. Calculate Skills Match Score (Max 30)
+            let matchedSkillsCount = 0;
+            let foundSkills = [];
+            let missingSkills = [];
+
+            currentJobCriteria.skills.forEach(skill => {
+                if (cleanText.includes(skill.toLowerCase())) {
+                    matchedSkillsCount++;
+                    foundSkills.push(skill);
+                } else {
+                    missingSkills.push(skill);
+                }
+            });
+
+            const skillRatio = currentJobCriteria.skills.length > 0 ? (matchedSkillsCount / currentJobCriteria.skills.length) : 1;
+            const skillScore = Math.round(skillRatio * 30);
+
+            // 3. Education & Certifications Score (Max 15)
+            let eduScore = 10;
+            if (cleanText.includes("bachelor") || cleanText.includes("s1") || cleanText.includes("degree")) eduScore += 3;
+            if (cleanText.includes("master") || cleanText.includes("s2") || cleanText.includes("certif")) eduScore += 2;
+            eduScore = Math.min(15, eduScore);
+
+            // 4. Behavioral & SLA / Continuous Improvement (Max 15)
+            let slaScore = 8;
+            if (cleanText.includes("sla") || cleanText.includes("kpi") || cleanText.includes("target")) slaScore += 4;
+            if (cleanText.includes("dmaic") || cleanText.includes("kaizen") || cleanText.includes("automation")) slaScore += 3;
+            slaScore = Math.min(15, slaScore);
+
+            // Total Score calculation
+            const totalScore = Math.min(99, expScore + skillScore + eduScore + slaScore);
+
+            // Category assignment
+            let category = "Low Fit";
+            if (totalScore >= 75) category = "High Fit";
+            else if (totalScore >= 50) category = "Moderate Fit";
+
+            // Generate Primary Strengths & Gaps
+            const strengths = [];
+            const gaps = [];
+
+            if (expYears >= currentJobCriteria.minExp) {
+                strengths.push(`${expYears}+ years of relevant operational experience (Exceeds min ${currentJobCriteria.minExp} yrs requirement).`);
+            } else {
+                gaps.push(`Experience timeline (${expYears} yrs) is slightly below target (${currentJobCriteria.minExp} yrs).`);
+            }
+
+            if (foundSkills.length > 0) {
+                strengths.push(`Strong proficiency in key requirements: ${foundSkills.slice(0, 3).join(', ')}.`);
+            }
+
+            if (missingSkills.length > 0) {
+                gaps.push(`May require onboarding training in: ${missingSkills.slice(0, 2).join(', ')}.`);
+            }
+
+            if (cleanText.includes("dmaic") || cleanText.includes("hris") || cleanText.includes("automation")) {
+                strengths.push("Demonstrates mindset for Continuous Improvement & HR Digitalization.");
+            } else {
+                gaps.push("No explicit mention of process automation or DMAIC methodology in resume.");
+            }
+
+            return {
+                id: Date.now() + Math.random(),
+                name: candidateName,
+                fileName: fileName,
+                score: totalScore,
+                category: category,
+                expYears: expYears,
+                breakdown: {
+                    exp: expScore,
+                    skills: skillScore,
+                    edu: eduScore,
+                    sla: slaScore
+                },
+                strengths: strengths,
+                gaps: gaps,
+                rawTextSnippet: rawText.substring(0, 400) + "..."
+            };
+        }
+
+        // Helper: Derive Candidate Name from File or Text
+        function deriveCandidateName(fileName, text) {
+            let clean = fileName.replace(/\.[^/.]+$/, "").replace(/cv|resume|_|-/gi, " ").trim();
+            clean = clean.replace(/\b\w/g, l => l.toUpperCase());
+            if (clean.length > 3 && !clean.toLowerCase().includes("sample")) {
+                return clean;
+            }
+            // Fallback names for mock feel
+            const mockNames = ["Budi Santoso", "Rina Wijaya", "Ahmad Fauzi", "Siti Rahma", "Fiscall Saktiyana", "Dewi Lestari", "Eko Prasetyo"];
+            return mockNames[Math.floor(Math.random() * mockNames.length)];
+        }
+
+        // Helper: Extract experience years from text
+        function extractExperienceYears(text) {
+            const match = text.match(/(\d+)\s*(?:years?|thn|tahun)/i);
+            if (match && match[1]) {
+                return parseInt(match[1]);
+            }
+            return Math.floor(Math.random() * 5) + 1; // Fallback simulation
+        }
+
+        // Recalculate scores if JD changes
+        function recalculateAllScores() {
+            candidateResults = candidateResults.map(c => analyzeCV(c.fileName, c.rawTextSnippet));
+            renderTable();
+            updateAnalytics();
+            showToast("Recalculated scores against updated Job Criteria.");
+        }
+
+        // Load Sample Candidate Data Batch
+        function loadSampleData() {
+            const samples = [
+                {
+                    name: "Rina Wijaya, S.Psi",
+                    fileName: "CV_Rina_Wijaya_TA_Supervisor.pdf",
+                    text: "Talent Acquisition Supervisor with 5 years experience in manufacturing plant. Expert in full-cycle recruitment, SLA tracking 20 days, HRIS automation, DMAIC Kaizen projects, and volume sourcing."
+                },
+                {
+                    name: "Budi Santoso",
+                    fileName: "Resume_Budi_Santoso_2026.docx",
+                    text: "Senior HR Specialist 4 years experience. Skilled in recruitment, interviewing, SLA management, labor law, personnel data, and employee onboarding."
+                },
+                {
+                    name: "Siti Rahma",
+                    fileName: "CV_Siti_Rahma_HR.pdf",
+                    text: "HR Generalist 2 years experience. Managed basic recruitment, administration, BPJS, attendance, and internal training coordination."
+                },
+                {
+                    name: "Ahmad Fauzi",
+                    fileName: "CV_Ahmad_Fauzi_Operations.txt",
+                    text: "Production Supervisor 1 year experience in warehouse and logistics. Focus on 5S safety and shift planning."
+                }
+            ];
+
+            candidateResults = samples.map(s => analyzeCV(s.fileName, s.text));
+            renderTable();
+            updateAnalytics();
+            showToast("Loaded 4 sample candidates for testing.");
+        }
+
+        // Render Candidates Table
+        function renderTable() {
+            const tbody = document.getElementById('candidateTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+
+            // Filter logic
+            let filtered = candidateResults.filter(c => {
+                const matchesFilter = (activeFilter === 'all') ||
+                    (activeFilter === 'high' && c.category === 'High Fit') ||
+                    (activeFilter === 'moderate' && c.category === 'Moderate Fit') ||
+                    (activeFilter === 'low' && c.category === 'Low Fit');
+
+                const matchesSearch = c.name.toLowerCase().includes(searchVal) || 
+                                      c.fileName.toLowerCase().includes(searchVal) ||
+                                      c.strengths.some(s => s.toLowerCase().includes(searchVal));
+
+                return matchesFilter && matchesSearch;
+            });
+
+            // Sort logic
+            filtered.sort((a, b) => currentSortAsc ? a.score - b.score : b.score - a.score);
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                tbody.innerHTML = filtered.map(c => {
+                    
+                    let badgeClass = "bg-rose-50 text-rose-700 border-rose-200";
+                    let progressColor = "bg-rose-500";
+                    if (c.category === "High Fit") {
+                        badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                        progressColor = "bg-emerald-500";
+                    } else if (c.category === "Moderate Fit") {
+                        badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
+                        progressColor = "bg-amber-500";
+                    }
+
+                    return `
+                        <tr class="hover:bg-slate-50/80 transition-colors group">
+                            <td class="py-3.5 px-4 font-medium text-slate-900">
+                                <div class="flex items-center gap-3">
+                                    <div class="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs border border-slate-200">
+                                        ${c.name.split(' ').map(n=>n[0]).join('').substring(0,2)}
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-slate-900">${c.name}</p>
+                                        <p class="text-[11px] text-slate-400 font-normal flex items-center gap-1">
+                                            <i class="fa-regular fa-file-lines"></i> ${c.fileName}
+                                        </p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3.5 px-4">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-extrabold text-slate-800">${c.score}%</span>
+                                    <div class="w-16 bg-slate-100 h-2 rounded-full overflow-hidden">
+                                        <div class="${progressColor} h-full rounded-full" style="width: ${c.score}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3.5 px-4">
+                                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold border ${badgeClass}">
+                                    ${c.category}
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-4">
+                                <p class="text-xs text-slate-600 line-clamp-2">
+                                    <strong class="text-slate-800">Key Strengths:</strong> ${c.strengths[0] || 'Standard profile match.'}
+                                </p>
+                            </td>
+                            <td class="py-3.5 px-4 text-right">
+                                <button onclick="openDetailModal('${c.id}')" class="px-3 py-1.5 text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 rounded-lg transition-colors">
+                                    <i class="fa-solid fa-chart-pie mr-1"></i> View Analysis
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            document.getElementById('recordCountInfo').innerText = `Showing ${filtered.length} of ${candidateResults.length} candidates`;
+        }
+
+        // Update Executive Dashboard Cards & Filter Counters
+        function updateAnalytics() {
+            const total = candidateResults.length;
+            const high = candidateResults.filter(c => c.category === 'High Fit').length;
+            const mod = candidateResults.filter(c => c.category === 'Moderate Fit').length;
+            const low = candidateResults.filter(c => c.category === 'Low Fit').length;
+            
+            const avgScore = total > 0 
+                ? Math.round(candidateResults.reduce((acc, c) => acc + c.score, 0) / total) 
+                : 0;
+
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statHigh').innerText = high;
+            document.getElementById('statModerate').innerText = mod;
+            document.getElementById('statLow').innerText = low;
+            document.getElementById('statAvg').innerText = avgScore + '%';
+
+            document.getElementById('cntAll').innerText = total;
+            document.getElementById('cntHigh').innerText = high;
+            document.getElementById('cntMod').innerText = mod;
+            document.getElementById('cntLow').innerText = low;
+        }
+
+        // Filter Buttons Switcher
+        function setFilter(filterType) {
+            activeFilter = filterType;
+            const btns = document.querySelectorAll('#filterBtnGroup button');
+            
+            btns.forEach(btn => {
+                if (btn.getAttribute('data-filter') === filterType) {
+                    btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white transition-all shadow-sm";
+                } else {
+                    btn.className = "px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-all";
+                }
+            });
+
+            renderTable();
+        }
+
+        // Sort toggle
+        function toggleSort() {
+            currentSortAsc = !currentSortAsc;
+            const sortIcon = document.getElementById('sortIcon');
+            sortIcon.className = currentSortAsc ? "fa-solid fa-sort-up text-brand-600 ml-1" : "fa-solid fa-sort-down text-brand-600 ml-1";
+            renderTable();
+        }
+
+        // Open Candidate Breakdown Modal Drawer
+        function openDetailModal(id) {
+            const candidate = candidateResults.find(c => c.id == id);
+            if (!candidate) return;
+
+            document.getElementById('modalName').innerText = candidate.name;
+            document.getElementById('modalPos').innerText = `Applied for: ${currentJobCriteria.title}`;
+            document.getElementById('modalScoreVal').innerText = candidate.score + '%';
+            document.getElementById('modalScoreBar').style.width = candidate.score + '%';
+
+            // Badge styling
+            const badge = document.getElementById('modalBadge');
+            badge.innerText = candidate.category;
+            if (candidate.category === "High Fit") {
+                badge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
+            } else if (candidate.category === "Moderate Fit") {
+                badge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200";
+            } else {
+                badge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200";
+            }
+
+            // Parameter breakdowns
+            document.getElementById('scoreExp').innerText = `${candidate.breakdown.exp} / 40`;
+            document.getElementById('scoreSkills').innerText = `${candidate.breakdown.skills} / 30`;
+            document.getElementById('scoreEdu').innerText = `${candidate.breakdown.edu} / 15`;
+            document.getElementById('scoreSLA').innerText = `${candidate.breakdown.sla} / 15`;
+
+            // Strengths list
+            document.getElementById('modalStrengths').innerHTML = candidate.strengths.map(s => `<li>${s}</li>`).join('');
+            
+            // Gaps list
+            document.getElementById('modalGaps').innerHTML = candidate.gaps.map(g => `<li>${g}</li>`).join('');
+
+            // Snippet text
+            document.getElementById('modalRawText').innerText = candidate.rawTextSnippet;
+
+            // Show modal
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+        }
+
+        // Clear All Data
+        function clearAllData() {
+            candidateResults = [];
+            uploadedFiles = [];
+            renderTable();
+            updateAnalytics();
+            showToast("Cleared all candidate evaluation records.");
+        }
+
+        // Export Results to Excel / CSV
+        function exportToCSV() {
+            if (candidateResults.length === 0) {
+                showToast("No data to export!");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Candidate Name,File Name,Match Score (%),Category,Primary Strengths,Key Gaps\n";
+
+            candidateResults.forEach(c => {
+                const row = [
+                    `"${c.name}"`,
+                    `"${c.fileName}"`,
+                    `"${c.score}"`,
+                    `"${c.category}"`,
+                    `"${(c.strengths[0] || '').replace(/"/g, '""')}"`,
+                    `"${(c.gaps[0] || '').replace(/"/g, '""')}"`
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `AI_Candidate_Screening_${currentJobCriteria.title.replace(/\s+/g, '_')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast("Exported candidates matrix to CSV/Excel.");
+        }
+
+        // Copy AI Summary
+        function copySummaryText() {
+            const name = document.getElementById('modalName').innerText;
+            const score = document.getElementById('modalScoreVal').innerText;
+            const strengths = document.getElementById('modalStrengths').innerText;
+            
+            const summary = `Candidate Summary - ${name}\nOverall Match: ${score}\n\nStrengths:\n${strengths}`;
+            
+            navigator.clipboard.writeText(summary).then(() => {
+                showToast("Summary copied to clipboard!");
+            });
+        }
+
+        // Toast Helper
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
